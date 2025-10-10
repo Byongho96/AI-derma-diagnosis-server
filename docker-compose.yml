@@ -1,4 +1,4 @@
-version: '3.8
+version: '3.8'
 
 services:
   db:
@@ -11,16 +11,14 @@ services:
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
-      - '3306:3306
-    volumes:
-      - ./mysql_data:/var/lib/mysql
+      - 3306:3306
 
   app:
     build: .
     container_name: fastapi_server
     ports:
-      - "8000:8000"
+      - 8000:8000
     environment:
-      - DATABASE_URL=mysql://root:rootpassword@db/mydatabase
+      - DATABASE_URL=mysql+pymysql://root:rootpassword@db/mydatabase
     depends_on:
       - db
