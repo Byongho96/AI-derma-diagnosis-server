@@ -1,15 +1,17 @@
-# app/db/session.py
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
+# DB connection pool
 engine = create_engine(settings.DATABASE_URL)
+
+# Create a new session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 데이터베이스 세션 DI
+
 def get_db():
-    db = SessionLocal()
+    db_session = SessionLocal()
     try:
-        yield db
+        yield db_session
     finally:
-        db.close()
+        db_session.close()

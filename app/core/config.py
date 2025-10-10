@@ -1,14 +1,14 @@
-# app/core/config.py
-import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "mysql://root:your_password@localhost/mydatabase"
-    SECRET_KEY: str = "your_very_secret_key"
+    DATABASE_URL: str = "mysql+pymysql://root:rootpassword@localhost:3306/mydatabase"
     ALGORITHM: str = "HS256"
+    SECRET_KEY: str = "secret_key"
+    
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     class Config:
-        env_file = ".env" # .env 파일에서 환경변수를 로드할 수 있습니다.
+        env_file = ".env" # load .env
 
 settings = Settings()
