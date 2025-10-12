@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.user import RegisterRequest, RegisterResponse, UserResponse, UpdateUsernameRequest
+from app.schemas.user import RegisterRequest, RegisterResponse, LoginRequest, UserResponse, UpdateUsernameRequest
 from app.schemas.auth import TokenResponse, RefreshTokenRequest, RefreshTokenResponse
 from app.schemas.common import MessageResponse
 from app.models.user import User
@@ -14,27 +14,27 @@ from app.services import auth_service
 
 router = APIRouter()
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED, summary="Register a new user")
 def register_user(user_in: RegisterRequest, db: Session = Depends(get_db)):
     new_user = user_service.register_new_user(db=db, user_in=user_in)
     return new_user
 
 
-@router.post("/login", response_model=TokenResponse)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@router.post("/login", response_model=TokenResponse, summary="User login to obtain access and refresh tokens")
+def login_for_access_token(login_request: LoginRequest, db: Session = Depends(get_db)):
     user = user_service.authenticate_user(
-        db=db, username=form_data.username, password=form_data.password
+        db=db, username=login_request.username, password=login_request.password
     )
     
-    access_token = auth_service.create_access_token(data={"sub": user.username})
-    refresh_token = auth_service.create_refresh_token(data={"sub": user.username})
+    access_token = auth_service.create_access_token(data={"sub": user.id})
+    refresh_token = auth_service.create_refresh_token(data={"sub": user.id})
     
     return {
         "access_token": access_token, 
         "refresh_token": refresh_token
     }
 
-@router.post("/refresh", response_model=RefreshTokenResponse)
+@router.post("/refresh", response_model=RefreshTokenResponse, summary="Refresh access token")
 def refresh_access_token(token_request: RefreshTokenRequest, db: Session = Depends(get_db)):
     token = token_request.refresh_token
 
@@ -44,12 +44,12 @@ def refresh_access_token(token_request: RefreshTokenRequest, db: Session = Depen
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    username = auth_service.verify_refresh_token(token, credentials_exception)
-    new_access_token = auth_service.create_access_token(data={"sub": username})
+    user_id = auth_service.verify_refresh_token(token, credentials_exception)
+    new_access_token = auth_service.create_access_token(data={"sub": user_id})
 
-    return {"token_type": "Bearer", "access_token": new_access_token}
+    return {"access_token": new_access_token}
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse, summary="Get current user information")
 def read_users_me(current_user: User = Depends(auth_service.get_current_user)):
     return current_user
 
@@ -66,10 +66,10 @@ def update_username(
     )
     return updated_user
 
-@router.delete("/me", response_model=MessageResponse, summary="Delete current user account")
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Delete current user account")
 def delete_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(auth_service.get_current_user)
 ):
     user_service.delete_user_account(db=db, user=current_user)
-    return {"msg": "User account deleted successfully"}
+    return

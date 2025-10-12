@@ -19,14 +19,18 @@ class RegisterRequest(BaseModel):
         return v
 
 class RegisterResponse(BaseModel):
-    id: int
+    id: str
     username: str
     email: str
     class Config:
         from_attributes = True
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class UserResponse(BaseModel):
-    id: int
+    id: str
     username: str
     email: EmailStr
     class Config:

@@ -24,6 +24,16 @@ def register_new_user(db: Session, user_in: RegisterRequest):
                 "msg": "Username already registered"
             },
         )
+    
+    db_user = crud_user.get_user_by_email(db, email=user_in.email)
+    if db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "type": "email_exists",
+                "msg": "Email already registered"
+            },
+        )
 
     hashed_password = user_service.get_password_hash(user_in.password)
     new_user = crud_user.create_user(db=db, username=user_in.username, hashed_password=hashed_password, email=user_in.email)

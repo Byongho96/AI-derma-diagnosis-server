@@ -12,6 +12,11 @@ services:
       MYSQL_PASSWORD: password
     ports:
       - 3306:3306
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
@@ -21,4 +26,5 @@ services:
     environment:
       - DATABASE_URL=mysql+pymysql://root:rootpassword@db/mydatabase
     depends_on:
-      - db
+      db:
+        condition: service_healthy
