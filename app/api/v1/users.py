@@ -23,7 +23,7 @@ def register_user(user_in: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse, summary="User login to obtain access and refresh tokens")
 def login_for_access_token(login_request: LoginRequest, db: Session = Depends(get_db)):
     user = user_service.authenticate_user(
-        db=db, username=login_request.username, password=login_request.password
+        db=db, username=login_request.email, password=login_request.password
     )
     
     access_token = auth_service.create_access_token(data={"sub": user.id})

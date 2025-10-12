@@ -39,8 +39,8 @@ def register_new_user(db: Session, user_in: RegisterRequest):
     new_user = crud_user.create_user(db=db, username=user_in.username, hashed_password=hashed_password, email=user_in.email)
     return new_user
 
-def authenticate_user(db: Session, username: str, password: str):
-    user = crud_user.get_user_by_username(db, username=username)
+def authenticate_user(db: Session, email: str, password: str):
+    user = crud_user.get_user_by_email(db, email=email)
     if not user or not user_service.verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
