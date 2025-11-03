@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
 from app.core.exceptions import validation_exception_handler
@@ -20,6 +21,18 @@ Base.metadata.create_all(bind=engine)
 Create FastAPI app instance and include routers.
 '''
 app = FastAPI()
+
+origins = [
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,          
+    allow_credentials=True,      
+    allow_methods=["*"],        
+    allow_headers=["*"],          
+)
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
