@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from app.core.exceptions import validation_exception_handler
 from app.models.base import Base
 
-from app.api.v1 import users
+from app.api.v1 import diagnoses, users
 from app.db.session import engine
 
 '''
@@ -36,6 +36,7 @@ app.add_middleware(
 
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(diagnoses.router, prefix="/api/v1/diagnoses", tags=["diagnoses"])
 
 # Health check endpoint
 @app.get("/")

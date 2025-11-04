@@ -18,10 +18,10 @@ class RegisterRequest(BaseModel):
 
         return v
 
-class RegisterResponse(BaseModel):
+class UserResponse(BaseModel):
     id: str
     username: str
-    email: str
+    email: EmailStr
     class Config:
         from_attributes = True
 
@@ -29,12 +29,10 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class UserResponse(BaseModel):
-    id: str
-    username: str
-    email: EmailStr
-    class Config:
-        from_attributes = True
+class LoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    user: UserResponse
 
 class UpdateUsernameRequest(BaseModel):
     new_username: str = Field(..., min_length=3, max_length=50, pattern="^[a-zA-Z0-9_]+$")

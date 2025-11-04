@@ -1,26 +1,24 @@
 # app/api/v1/users.py
 
-from fastapi import APIRouter, Depends, status, Header, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.user import RegisterRequest, RegisterResponse, LoginRequest, UserResponse, UpdateUsernameRequest
-from app.schemas.auth import TokenResponse, RefreshTokenRequest, RefreshTokenResponse
-from app.schemas.common import MessageResponse
+from app.schemas.user import RegisterRequest, LoginRequest, LoginResponse, UserResponse, UpdateUsernameRequest
+from app.schemas.auth import RefreshTokenRequest, RefreshTokenResponse
 from app.models.user import User
 from app.services import user_service
 from app.services import auth_service
 
 router = APIRouter()
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED, summary="Register a new user")
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED, summary="Register a new user")
 def register_user(user_in: RegisterRequest, db: Session = Depends(get_db)):
     new_user = user_service.register_new_user(db=db, user_in=user_in)
     return new_user
 
 
-@router.post("/login", response_model=TokenResponse, summary="User login to obtain access and refresh tokens")
+@router.post("/login", response_model=LoginResponse, summary="User login to obtain access and refresh tokens")
 def login_for_access_token(login_request: LoginRequest, db: Session = Depends(get_db)):
     user = user_service.authenticate_user(
         db=db, email=login_request.email, password=login_request.password
@@ -31,7 +29,8 @@ def login_for_access_token(login_request: LoginRequest, db: Session = Depends(ge
     
     return {
         "access_token": access_token, 
-        "refresh_token": refresh_token
+        "refresh_token": refresh_token,
+        "user": user
     }
 
 @router.post("/refresh", response_model=RefreshTokenResponse, summary="Refresh access token")
