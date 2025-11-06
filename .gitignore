@@ -11,3 +11,6 @@ pycache/
 .vscode/
 
 .DS_Store
+
+# Static files
+static/

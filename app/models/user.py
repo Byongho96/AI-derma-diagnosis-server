@@ -1,6 +1,7 @@
 import uuid
 from sqlalchemy import Column, String
 from app.models.base import Base
+from sqlalchemy.orm import relationship
 
 class User(Base):
     __tablename__ = "users"
@@ -9,3 +10,5 @@ class User(Base):
     email = Column(String(255), unique=True, index=True)
     username = Column(String(50), unique=True)
     hashed_password = Column(String(255))
+
+    diagnoses = relationship("Diagnosis", back_populates="user")
