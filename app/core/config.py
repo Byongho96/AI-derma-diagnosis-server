@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     STATIC_URL_PREFIX: str = "/static"
     IMG_SIZE: int = 1024
 
+    DUMMY_DIR: ClassVar[Path] = Path("app/dummy")
+    DUMMY_URL_PREFIX: str = "/dummy"
+
     # AI configuration
-    AI_DEVICE: str = "-1"  # "cpu" | gpu index ("-1", "0", "1", ...) | "cuda"
+    AI_DEVICE: str = "cpu"  # "cpu" | gpu index ("-1", "0", "1", ...) | "cuda"
     OLLAMA_HOST: str = "http://localhost:11434"
 
     # Email configuration
