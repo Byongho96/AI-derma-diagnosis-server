@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "secret_key"    # Default : Update .env file with secure values
 
     # Database configuration
-    DATABASE_URL: str = "mysql+pymysql://root:rootpassword@localhost:3306/mydatabase"
+    DATABASE_URL: str = "mysql+pymysql://user:password@localhost:3306/mydatabase"
     
     # JWT token settings
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -21,6 +21,20 @@ class Settings(BaseSettings):
     # AI configuration
     AI_DEVICE: str = "-1"  # "cpu" | gpu index ("-1", "0", "1", ...) | "cuda"
     OLLAMA_HOST: str = "http://localhost:11434"
+
+    # Email configuration
+    MAIL_USERNAME: str = "your_email@gmail.com"    
+    MAIL_PASSWORD: str = "your_app_password"   
+    MAIL_FROM: str = "your_email@gmail.com"          
+    MAIL_FROM_NAME: str = "My App"
+
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_PORT: int = 587
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = True
 
     class Config:
         env_file = ".env"

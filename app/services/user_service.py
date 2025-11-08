@@ -1,3 +1,4 @@
+import secrets
 import hashlib
 
 from fastapi import HTTPException, status
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.crud import crud_user
 from app.models.user import User
 from app.schemas.user import RegisterRequest
+from app.services import email_service
 
 
 def get_password_hash(password: str) -> str:
