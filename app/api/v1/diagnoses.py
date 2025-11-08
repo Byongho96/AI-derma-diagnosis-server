@@ -15,7 +15,7 @@ from app.crud.crud_diagonsis import (
     get_diagnosis_by_id
 )
 from app.schemas.diagnosis import (
-    DiagnosisDetail, DiagnosisList, RecentDiagnosis
+    DiagnosisDetail, DiagnosisHistory, DiagnosisList, RecentDiagnosis
 )
 
 router = APIRouter()
@@ -55,7 +55,7 @@ def get_diagnoses(
     return {"items": diagnoses_list}
 
 
-@router.get("/recent", response_model=RecentDiagnosis)
+@router.get("/recent")
 def get_recent_diagnosis(
     db: Session = Depends(get_db),
     current_user: User = Depends(auth_service.get_current_user)
@@ -65,7 +65,8 @@ def get_recent_diagnosis(
     """
     recent_diagnosis = get_recent_diagnosis_by_user(
         db=db, 
-        user_id=current_user.id
+        user_id=current_user.id,
+        kth=1
     )
     
     if not recent_diagnosis:
@@ -88,44 +89,72 @@ def get_recent_diagnosis(
         compared_to_previous=compared_to_previous
     )
 
-@router.get("/results/recent/week", response_model=DiagnosisList)
+@router.get("/recent/week", response_model=DiagnosisHistory)
 def get_weekly_diagnoses(
     db: Session = Depends(get_db),
     current_user: User = Depends(auth_service.get_current_user), 
+    endDate: Optional[date] = Query(
+        None, 
+        description="end date (YYYY-MM-DD)",
+        example="2024-01-01"
+    )
 ):
     """
     Get diagnosis records for the logged-in user from the past 7 days.
     """
-    end_date = date.today()
-    start_date = end_date - timedelta(days=7)
+    if endDate is None:
+        endDate = date.today()
+
+    start_date = endDate - timedelta(days=7)
 
     diagnoses_list = get_diagnoses_by_user(
         db=db, 
         user_id=current_user.id,
         start_date=start_date,
-        end_date=end_date
+        end_date=endDate
     )
-    return {"items": diagnoses_list}
+
+    result = DiagnosisHistory(
+        total_score=diagnoses_list[0].total_score if diagnoses_list else 0,
+        wrinkle_scores=[diag.wrinkle_score for diag in diagnoses_list if diag.wrinkle_score is not None],
+        acne_scores=[diag.acne_score for diag in diagnoses_list if diag.acne_score is not None],
+        atopy_scores=[diag.atopy_score for diag in diagnoses_list if diag.atopy_score is not None],
+    )
+    return result
 
 
-@router.get("/results/recent/month", response_model=DiagnosisList)
+@router.get("/recent/month", response_model=DiagnosisHistory)
 def get_monthly_diagnoses(
     db: Session = Depends(get_db),
     current_user: User = Depends(auth_service.get_current_user), 
+    endDate: Optional[date] = Query(
+        None, 
+        description="end date (YYYY-MM-DD)",
+        example="2024-01-01"
+    )
 ):
     """
     Get diagnosis records for the logged-in user from the past 30 days.
     """
-    end_date = date.today()
-    start_date = end_date - timedelta(days=30)
+    print("endDate:", endDate)
+    if endDate is None:
+        endDate = date.today()
+    start_date = endDate - timedelta(days=30)
 
     diagnoses_list = get_diagnoses_by_user(
         db=db, 
         user_id=current_user.id,
         start_date=start_date,
-        end_date=end_date
+        end_date=endDate
     )
-    return {"items": diagnoses_list}
+
+    result = DiagnosisHistory(
+        total_score=diagnoses_list[0].total_score if diagnoses_list else 0,
+        wrinkle_scores=[diag.wrinkle_score for diag in diagnoses_list if diag.wrinkle_score is not None],
+        acne_scores=[diag.acne_score for diag in diagnoses_list if diag.acne_score is not None],
+        atopy_scores=[diag.atopy_score for diag in diagnoses_list if diag.atopy_score is not None],
+    )
+    return result
 
 
 @router.get("/{diagnosis_id}", response_model=DiagnosisDetail)
@@ -151,14 +180,30 @@ def get_diagnosis_result(
     if not diagnosis:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     
-    diagnosis.recent_scores = [
-        dg.total_score for dg in get_recent_diagnoses_by_user(
-            db=db,
-            user_id=current_user.id,
-            limit=3
-        )
+    recent_diagnoses = get_recent_diagnoses_by_user(
+        db=db, 
+        user_id=current_user.id,
+        limit=3
+    )
+
+    diagnosis_detail = DiagnosisDetail.from_orm(diagnosis)
+    
+    diagnosis_detail.recent_scores = [
+        diagnosis.total_score for diagnosis in recent_diagnoses
     ]
-            
+    
+    diagnosis_detail.recent_wrinkle_scores = [
+        diagnosis.wrinkle_score for diagnosis in recent_diagnoses if diagnosis.wrinkle_score is not None
+    ]
+    
+    diagnosis_detail.recent_acne_scores = [
+        diagnosis.acne_score for diagnosis in recent_diagnoses if diagnosis.acne_score is not None
+    ]
+
+    diagnosis_detail.recent_atopy_scores = [
+        diagnosis.atopy_score for diagnosis in recent_diagnoses if diagnosis.atopy_score is not None
+    ]
+
     return diagnosis
 
 
@@ -178,12 +223,28 @@ async def create_diagnosis(
         user_id=current_user.id
     )
 
-    diagnosis_result.recent_scores = [
-        diagnosis.total_score for diagnosis in get_recent_diagnoses_by_user(
-            db=db,
-            user_id=current_user.id,
-            limit=3
-        )
+    diagnosis_detail = DiagnosisDetail.from_orm(diagnosis_result)
+
+    recent_diagnoses = get_recent_diagnoses_by_user(
+        db=db,
+        user_id=current_user.id,
+        limit=3
+    )
+
+    diagnosis_detail.recent_scores = [
+        diagnosis.total_score for diagnosis in recent_diagnoses
+    ]
+    
+    diagnosis_detail.recent_wrinkle_scores = [
+        diagnosis.wrinkle_score for diagnosis in recent_diagnoses if diagnosis.wrinkle_score is not None
+    ]
+    
+    diagnosis_detail.recent_acne_scores = [
+        diagnosis.acne_score for diagnosis in recent_diagnoses if diagnosis.acne_score is not None
     ]
 
-    return diagnosis_result
+    diagnosis_detail.recent_atopy_scores = [
+        diagnosis.atopy_score for diagnosis in recent_diagnoses if diagnosis.atopy_score is not None
+    ]
+
+    return diagnosis_detail

@@ -13,6 +13,7 @@ class DiagnosisDetailItem(BaseModel):
     score: int
     image_url: HttpUrl | str
     description: str | None
+    recentScores: list[int] = []
 
 class DiagnosisScoreItem(BaseModel):
     score: int
@@ -41,9 +42,23 @@ class BaseDiagnosisResponse(BaseModel):
     atopy_image_url: str | None = Field(exclude=True)
     atopy_description: str | None = Field(exclude=True)
 
+class DiagnosisHistory(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
+    total_score: int
+    wrinkle_scores: list[int] = []
+    acne_scores: list[int] = []
+    atopy_scores: list[int] = []
 
 class DiagnosisDetail(BaseDiagnosisResponse):
     recent_scores: list[int] = []
+
+    recent_wrinkle_scores: list[int] = Field([], exclude=True)
+    recent_acne_scores: list[int] = Field([], exclude=True)
+    recent_atopy_scores: list[int] = Field([], exclude=True)
     
     @computed_field(alias="wrinkle")
     @property
@@ -53,6 +68,7 @@ class DiagnosisDetail(BaseDiagnosisResponse):
             score=self.wrinkle_score,
             image_url=self.wrinkle_image_url or "",
             description=self.wrinkle_description,
+            recentScores=self.recent_wrinkle_scores
         )
 
     @computed_field(alias="acne")
@@ -63,6 +79,7 @@ class DiagnosisDetail(BaseDiagnosisResponse):
             score=self.acne_score,
             image_url=self.acne_image_url or "",
             description=self.acne_description,
+            recentScores=self.recent_acne_scores
         )
 
     @computed_field(alias="atopy")
@@ -73,11 +90,13 @@ class DiagnosisDetail(BaseDiagnosisResponse):
             score=self.atopy_score,
             image_url=self.atopy_image_url or "",
             description=self.atopy_description,
+            recentScores=self.recent_atopy_scores
         )
 
 class RecentDiagnosis(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
+        populate_by_name=True
     )
 
     id: str | uuid.UUID
