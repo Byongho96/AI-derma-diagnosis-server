@@ -18,3 +18,4 @@ pycache/
 .DS_Store
 
 static/
+!app/static/

@@ -10,7 +10,7 @@ def create_diagnosis(
     *,
     user_id: str,
     original_image_url: str,
-    created_at: datetime,
+    created_at: datetime = None,
     total_score: int,
     wrinkle_score: int = None,
     wrinkle_image_url: str = None,

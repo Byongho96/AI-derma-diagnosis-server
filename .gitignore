@@ -14,5 +14,5 @@ pycache/
 .DS_Store
 
 # Static files
-static/
 static*/
+!app/static/

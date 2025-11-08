@@ -46,6 +46,9 @@ app.mount(
     name="static-images"
 )
 
+# Mount static files directory
+app.mount(  f"/{settings.STATIC_DIR.name}", StaticFiles(directory=static_dir_path), name="static")
+
 # Register exception handlers and API routers
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])

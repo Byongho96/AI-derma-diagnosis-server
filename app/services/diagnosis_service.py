@@ -64,8 +64,17 @@ def _run_yolo_segmentation(
 
     result = results[0]
     if result.masks is None:
-        print(f"No {analysis_type} masks found.")
-        return None, 100
+        print(f"No {analysis_type} masks found. Creating black overlay.")
+        score = 100
+    else:
+        print(f"Found {len(result.masks)} {analysis_type} masks.")
+        masks = result.masks.data.cpu().numpy()
+        
+        for mask in masks:
+            color = (255, 255, 255) # Use white for all masks
+            combined_mask_viz[mask.astype(bool)] = color
+
+        score = calculate_score(masks)
 
     img_rgb = cv2.cvtColor(result.orig_img, cv2.COLOR_BGR2RGB)
     masks = result.masks.data.cpu().numpy()
@@ -111,8 +120,8 @@ def run_skin_analysis(
         "Do not describe the image.\n"
         f"The main concern is {analysis_type} and talk to the user directly.\n"
         "Give short, natural advice as if speaking to them, in a warm but expert tone.\n"
-        "Focus on 1-2 key problems and how to improve them with practical skincare steps.\n"
-        "Keep it under 3 short sentences in English."
+        f"Focus on {analysis_type} problem and how to improve them with practical skincare steps.\n"
+        "Keep it under 2 short sentences in English."
     )
     
     # LLaVA (이미지 포함) 요청 페이로드

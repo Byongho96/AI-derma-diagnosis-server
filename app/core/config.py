@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Static files configuration
-    STATIC_DIR: ClassVar[Path] = Path("static/images")
-    STATIC_URL_PREFIX: str = "/static/images"
+    STATIC_DIR: ClassVar[Path] = Path("static")
+    STATIC_URL_PREFIX: str = "/static"
     IMG_SIZE: int = 1024
 
     # AI configuration
