@@ -1,12 +1,15 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 
-from app.core.exceptions import validation_exception_handler
-from app.models.base import Base
-
+from app.core.config import settings
 from app.api.v1 import diagnoses, users
+from app.core.exceptions import validation_exception_handler
 from app.db.session import engine
+from app.models.base import Base
 
 '''
 Create all database tables.
@@ -17,15 +20,13 @@ Create all database tables.
 Base.metadata.create_all(bind=engine)
 
 
-'''
-Create FastAPI app instance and include routers.
-'''
+# Initialize FastAPI application
 app = FastAPI()
 
+# CORS middleware configuration
 origins = [
     "*",
 ]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,          
@@ -34,6 +35,19 @@ app.add_middleware(
     allow_headers=["*"],          
 )
 
+# static files configuration
+static_dir_path = str(settings.STATIC_DIR.resolve())
+
+# Ensure the static directory exists
+Path(static_dir_path).mkdir(parents=True, exist_ok=True) 
+
+app.mount(
+    settings.STATIC_URL_PREFIX,
+    StaticFiles(directory=static_dir_path),
+    name="static-images"
+)
+
+# Register exception handlers and API routers
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(diagnoses.router, prefix="/api/v1/diagnoses", tags=["diagnoses"])

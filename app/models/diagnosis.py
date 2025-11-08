@@ -8,11 +8,11 @@ class Diagnosis(Base):
     __tablename__ = "diagnoses"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
     user = relationship("User", back_populates="diagnoses")
-
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     total_score = Column(Integer, nullable=False)
     original_image_url = Column(String(512), nullable=False)
 

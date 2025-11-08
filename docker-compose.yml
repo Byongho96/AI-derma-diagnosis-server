@@ -6,25 +6,81 @@ services:
     container_name: mysql_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: mydatabase
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - 3306:3306
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
     healthcheck:
       test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       interval: 10s
       timeout: 5s
       retries: 5
 
+  ollama_server:
+    image: ollama/ollama
+    container_name: ollama_server
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    # Uncomment the following lines to enable GPU support
+    # NVIDIA Container Toolkit must be installed on the host system
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1 
+              capabilities: [gpu]
+    # Wait for the server to start and pull models
+    entrypoint: /bin/sh
+    command: >
+      -c "
+        echo 'Starting Ollama server in background...'
+        ollama serve &
+        SERVER_PID=$$!
+        
+        echo 'Waiting 10 seconds for server to initialize...'
+        sleep 10
+        
+        echo 'Pulling llava model (if not present)...'
+        ollama pull llava
+        
+        echo 'Pulling gemma2:9b model (if not present)...'
+        ollama pull gemma2:9b
+        
+        echo 'Initialization complete. Bringing server to foreground.'
+        wait $$SERVER_PID
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:11434/api/tags | grep 'llava' && curl -s http://localhost:11434/api/tags | grep 'gemma2:9b'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30 
+
   app:
     build: .
     container_name: fastapi_server
     ports:
-      - 8000:8000
+      - "8000:8000"
+    volumes:
+      - ./static_files:/app/static
     environment:
-      - DATABASE_URL=mysql+pymysql://root:rootpassword@db/mydatabase
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db/${MYSQL_DATABASE}
+      - ALGORITHM=${ALGORITHM}
+      - SECRET_KEY=${SECRET_KEY}
+      - OLLAMA_HOST=http://ollama_server:11434
     depends_on:
       db:
         condition: service_healthy
+      ollama_server:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  ollama_data:

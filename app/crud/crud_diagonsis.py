@@ -1,7 +1,8 @@
+from datetime import date, datetime, time
 
 from sqlalchemy.orm import Session
-from app.models.diagnosis import Diagnosis # Diagnosis 모델 임포트
-from datetime import date, datetime, time
+
+from app.models.diagnosis import Diagnosis
 
 
 def create_diagnosis(
@@ -22,11 +23,8 @@ def create_diagnosis(
     atopy_description: str = None
 ) -> Diagnosis:
     """
-    진단 결과를 데이터베이스에 저장합니다.
-    (개별 인자로 받도록 수정됨)
+    Saves a new diagnosis result to the database.
     """
-    
-    # 전달받은 개별 인자들로 SQLAlchemy 모델 객체를 직접 생성
     db_obj = Diagnosis(
         user_id=user_id,
         original_image_url=original_image_url,
@@ -48,23 +46,17 @@ def create_diagnosis(
     db.refresh(db_obj)
     return db_obj
 
-# app/crud/crud_diagnosis.py
-
-# create_diagnosis 함수는 이미 있다고 가정합니다.
 
 def get_diagnoses_by_user(
     db: Session, 
     user_id: str, 
     start_date: date, 
     end_date: date
-):
+) -> list[Diagnosis]:
     """
-    특정 사용자의 기간별 진단 기록을 날짜 내림차순(최신순)으로 조회합니다.
+    Gets diagnoses for a specific user within a date range, ordered by most recent.
     """
-    # date 객체를 datetime 객체로 변환 (DB의 datetime 컬럼과 비교하기 위해)
-    # start_date: 그날의 시작 (00:00:00)
     start_datetime = datetime.combine(start_date, time.min)
-    # end_date: 그날의 끝 (23:59:59)
     end_datetime = datetime.combine(end_date, time.max)
     
     return db.query(Diagnosis).filter(
@@ -74,18 +66,18 @@ def get_diagnoses_by_user(
     ).order_by(Diagnosis.created_at.desc()).all()
 
 
-def get_recent_diagnosis_by_user(db: Session, user_id: str):
+def get_recent_diagnosis_by_user(db: Session, user_id: str) -> Diagnosis | None:
     """
-    특정 사용자의 가장 최근 진단 기록 1건을 조회합니다.
+    Gets the most recent diagnosis record for a specific user.
     """
     return db.query(Diagnosis).filter(
         Diagnosis.user_id == user_id
     ).order_by(Diagnosis.created_at.desc()).first()
 
 
-def get_diagnosis_by_id(db: Session, diagnosis_id: str):
+def get_diagnosis_by_id(db: Session, diagnosis_id: str) -> Diagnosis | None:
     """
-    특정 ID의 진단 기록을 조회하되, 반드시 요청한 사용자의 소유인지 확인합니다.
+    Gets a specific diagnosis by its ID.
     """
     return db.query(Diagnosis).filter(
         Diagnosis.id == diagnosis_id,
