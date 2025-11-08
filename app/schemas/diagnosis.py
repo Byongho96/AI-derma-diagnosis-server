@@ -4,12 +4,6 @@ from fastapi import UploadFile
 from pydantic import BaseModel, HttpUrl, ConfigDict, Field, computed_field
 from pydantic.alias_generators import to_camel
 
-class DiagnosisCreate(BaseModel):
-    file: UploadFile
-    
-    class Config:
-        arbitrary_types_allowed = True #  Pydantic config option to allow non-standard types
-
 class DiagnosisDetailItem(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -49,6 +43,7 @@ class BaseDiagnosisResponse(BaseModel):
 
 
 class DiagnosisDetail(BaseDiagnosisResponse):
+    recent_scores: list[int] = []
     
     @computed_field(alias="wrinkle")
     @property
@@ -79,6 +74,16 @@ class DiagnosisDetail(BaseDiagnosisResponse):
             image_url=self.atopy_image_url or "",
             description=self.atopy_description,
         )
+
+class RecentDiagnosis(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+    )
+
+    id: str | uuid.UUID
+    created_at: datetime
+    total_score: int
+    compared_to_previous: int | None
 
 class DiagnosisSimple(BaseDiagnosisResponse):
     

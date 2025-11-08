@@ -11,13 +11,12 @@ from app.db.session import get_db
 from app.models.user import User
 from app.services import auth_service, diagnosis_service
 from app.crud.crud_diagonsis import (
-    get_diagnoses_by_user, get_recent_diagnosis_by_user, 
+    get_diagnoses_by_user, get_recent_diagnoses_by_user, get_recent_diagnosis_by_user, 
     get_diagnosis_by_id
 )
 from app.schemas.diagnosis import (
-    DiagnosisDetail, DiagnosisList, DiagnosisSimple, DiagnosisCreate
+    DiagnosisDetail, DiagnosisList, RecentDiagnosis
 )
-
 
 router = APIRouter()
 
@@ -56,7 +55,7 @@ def get_diagnoses(
     return {"items": diagnoses_list}
 
 
-@router.get("/recent", response_model=DiagnosisSimple)
+@router.get("/recent", response_model=RecentDiagnosis)
 def get_recent_diagnosis(
     db: Session = Depends(get_db),
     current_user: User = Depends(auth_service.get_current_user)
@@ -72,7 +71,61 @@ def get_recent_diagnosis(
     if not recent_diagnosis:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     
-    return recent_diagnosis
+    second_recent_diagnosis = get_recent_diagnosis_by_user(
+        db=db,
+        user_id=current_user.id,
+        kth=2
+    )
+
+    compared_to_previous = 0
+    if second_recent_diagnosis:
+        compared_to_previous = recent_diagnosis.total_score - second_recent_diagnosis.total_score
+
+    return RecentDiagnosis(
+        id=recent_diagnosis.id,
+        created_at=recent_diagnosis.created_at,
+        total_score=recent_diagnosis.total_score,
+        compared_to_previous=compared_to_previous
+    )
+
+@router.get("/results/recent/week", response_model=DiagnosisList)
+def get_weekly_diagnoses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth_service.get_current_user), 
+):
+    """
+    Get diagnosis records for the logged-in user from the past 7 days.
+    """
+    end_date = date.today()
+    start_date = end_date - timedelta(days=7)
+
+    diagnoses_list = get_diagnoses_by_user(
+        db=db, 
+        user_id=current_user.id,
+        start_date=start_date,
+        end_date=end_date
+    )
+    return {"items": diagnoses_list}
+
+
+@router.get("/results/recent/month", response_model=DiagnosisList)
+def get_monthly_diagnoses(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(auth_service.get_current_user), 
+):
+    """
+    Get diagnosis records for the logged-in user from the past 30 days.
+    """
+    end_date = date.today()
+    start_date = end_date - timedelta(days=30)
+
+    diagnoses_list = get_diagnoses_by_user(
+        db=db, 
+        user_id=current_user.id,
+        start_date=start_date,
+        end_date=end_date
+    )
+    return {"items": diagnoses_list}
 
 
 @router.get("/{diagnosis_id}", response_model=DiagnosisDetail)
@@ -97,6 +150,14 @@ def get_diagnosis_result(
 
     if not diagnosis:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+    
+    diagnosis.recent_scores = [
+        dg.total_score for dg in get_recent_diagnoses_by_user(
+            db=db,
+            user_id=current_user.id,
+            limit=3
+        )
+    ]
             
     return diagnosis
 
@@ -116,5 +177,13 @@ async def create_diagnosis(
         file=file,
         user_id=current_user.id
     )
+
+    diagnosis_result.recent_scores = [
+        diagnosis.total_score for diagnosis in get_recent_diagnoses_by_user(
+            db=db,
+            user_id=current_user.id,
+            limit=3
+        )
+    ]
 
     return diagnosis_result

@@ -20,8 +20,17 @@ from app.crud import crud_diagonsis
 # Threshold for calculating wrinkle score 
 MAX_WRINKLE_RATIO_THRESHOLD = 0.1 
 
-# Relative path to the current file directory
+# # Relative path to the current file directory
 CURRENT_FILE_DIR = Path(__file__).resolve().parent
+
+# # Load Haar Cascade for face detection
+# FACE_CASCADE_PATH = str(CURRENT_FILE_DIR / "weights" / "haarcascade_frontalface_default.xml")
+# face_cascade = cv2.CascadeClassifier(FACE_CASCADE_PATH)
+
+# if face_cascade.empty:
+#     # 서버 시작 시 이 경로에 파일이 없으면 에러를 발생시키는 것이 좋습니다.
+#     print(f"치명적 오류: 얼굴 인식 파일({FACE_CASCADE_PATH})을 로드할 수 없습니다.")
+#     # raise RuntimeError(f"Could not load face cascade from {FACE_CASCADE_PATH}")
 
 def calculate_score(masks: np.ndarray) -> int:
     """

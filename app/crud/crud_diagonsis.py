@@ -66,14 +66,22 @@ def get_diagnoses_by_user(
     ).order_by(Diagnosis.created_at.desc()).all()
 
 
-def get_recent_diagnosis_by_user(db: Session, user_id: str) -> Diagnosis | None:
+def get_recent_diagnosis_by_user(db: Session, user_id: str, kth: int = 1) -> Diagnosis | None:
     """
     Gets the most recent diagnosis record for a specific user.
     """
     return db.query(Diagnosis).filter(
         Diagnosis.user_id == user_id
-    ).order_by(Diagnosis.created_at.desc()).first()
+    ).order_by(Diagnosis.created_at.desc()).offset(kth - 1).limit(1).first()
 
+
+def get_recent_diagnoses_by_user(db: Session, user_id: str, limit: int = 3) -> list[Diagnosis]:
+    """
+    Gets the most recent diagnosis records for a specific user.
+    """
+    return db.query(Diagnosis).filter(
+        Diagnosis.user_id == user_id
+    ).order_by(Diagnosis.created_at.desc()).limit(limit).all()
 
 def get_diagnosis_by_id(db: Session, diagnosis_id: str) -> Diagnosis | None:
     """
