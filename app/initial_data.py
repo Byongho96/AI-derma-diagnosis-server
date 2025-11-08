@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine 
+from app.db.session import get_db, engine, SessionLocal
 from app.models.base import Base    
 from app.models.user import User             
 from app.models.diagnosis import Diagnosis  
@@ -14,17 +14,17 @@ logger = logging.getLogger(__name__)
 DEFAULT_USER_EMAIL = "rumiskin11@gmail.com"
 DEFAULT_USER_PASSWORD = "1q2w3e4r!"
 
-IMG_ORIGINAL = "/static/dummy_original.jpg"
-IMG_WRINKLE = "/static/dummy_wrinkle.jpg"
-IMG_ACNE = "/static/dummy_acne.jpg"
-IMG_ATOPY = "/static/dummy_atopy.jpg"
+IMG_ORIGINAL = "/dummy/dummy_original.jpg"
+IMG_WRINKLE = "/dummy/dummy_wrinkle.jpg"
+IMG_ACNE = "/dummy/dummy_acne.jpg"
+IMG_ATOPY = "/dummy/dummy_atopy.jpg"
 
-def init_db(db: Session) -> None:
+def init_db(session: Session) -> None:
     # Create all tables
     Base.metadata.create_all(bind=engine)
 
     # Check if the default user exists
-    user = db.query(User).filter(User.email == DEFAULT_USER_EMAIL).first()
+    user = session.query(User).filter(User.email == DEFAULT_USER_EMAIL).first()
 
     if not user:
         logger.info("Creating default user...")
@@ -34,16 +34,16 @@ def init_db(db: Session) -> None:
             username="admin",
             hashed_password=hashed_password
         )
-        db.add(default_user)
-        db.commit()
-        db.refresh(default_user)
+        session.add(default_user)
+        session.commit()
+        session.refresh(default_user)
         user = default_user
         logger.info("Default user created.")
     else:
         logger.info("Default user already exists.")
 
     # Check if dummy diagnosis data exists (e.g., check only 1)
-    diagnosis_count = db.query(Diagnosis).filter(Diagnosis.user_id == user.id).count()
+    diagnosis_count = session.query(Diagnosis).filter(Diagnosis.user_id == user.id).count()
 
     if diagnosis_count == 0:
         logger.info("Creating dummy diagnosis data...")
@@ -96,8 +96,8 @@ def init_db(db: Session) -> None:
             )
         ]
         
-        db.bulk_save_objects(dummy_data)
-        db.commit()
+        session.bulk_save_objects(dummy_data)
+        session.commit()
         logger.info("Dummy diagnosis data created.")
     else:
          logger.info("Dummy diagnosis data already exists.")
@@ -105,14 +105,12 @@ def init_db(db: Session) -> None:
 
 def main():
     logger.info("Initializing database and seeding data...")
-    db = SessionLocal()
-    try:
-        init_db(db)
-        logger.info("Database initialization and seeding finished.")
-    except Exception as e:
-        logger.error(f"An error occurred during DB initialization: {e}")
-    finally:
-        db.close()
+    with SessionLocal() as session:
+        try:
+            init_db(session)
+            logger.info("Database initialization and seeding finished.")
+        except Exception as e:
+            logger.error(f"An error occurred during DB initialization: {e}")
 
 if __name__ == "__main__":
     main()

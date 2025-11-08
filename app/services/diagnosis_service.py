@@ -8,7 +8,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime
 
-import httpx
+# import httpx
 from ultralytics import YOLO
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
@@ -63,6 +63,10 @@ def _run_yolo_segmentation(
     results = model.predict(source=img_path, conf=0.25, imgsz=img_size, device=device, save=False, show=False)
 
     result = results[0]
+
+    img_rgb = cv2.cvtColor(result.orig_img, cv2.COLOR_BGR2RGB)
+    combined_mask_viz = np.zeros_like(img_rgb, dtype=np.uint8)
+
     if result.masks is None:
         print(f"No {analysis_type} masks found. Creating black overlay.")
         score = 100
@@ -76,15 +80,6 @@ def _run_yolo_segmentation(
 
         score = calculate_score(masks)
 
-    img_rgb = cv2.cvtColor(result.orig_img, cv2.COLOR_BGR2RGB)
-    masks = result.masks.data.cpu().numpy()
-    combined_mask_viz = np.zeros_like(img_rgb, dtype=np.uint8)
-
-    for mask in masks:
-        color = (255, 255, 255) # Use white for all masks
-        combined_mask_viz[mask.astype(bool)] = color
-
-    score = calculate_score(masks)
     overlay = cv2.addWeighted(img_rgb, 0.6, combined_mask_viz, 0.4, 0)
     
     os.makedirs(output_dir, exist_ok=True)
@@ -106,77 +101,78 @@ def run_skin_analysis(
     """
     Uses Ollama REST API (via httpx) to get skin analysis advice in Korean.
     """
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"Image not found: {image_path}")
+    return "피부 분석 기능이 현재 비활성화되어 있습니다."
+    # if not os.path.exists(image_path):
+    #     raise FileNotFoundError(f"Image not found: {image_path}")
 
-    with open(image_path, "rb") as f:
-        image_base64 = base64.b64encode(f.read()).decode("utf-8")
+    # with open(image_path, "rb") as f:
+    #     image_base64 = base64.b64encode(f.read()).decode("utf-8")
 
-    ollama_api_url = f"{settings.OLLAMA_HOST}/api/chat"
+    # ollama_api_url = f"{settings.OLLAMA_HOST}/api/chat"
 
-    prompt_en = (
-        "You are a friendly but professional dermatologist AI.\n"
-        "You will be given a close-up image of a user's skin.\n"
-        "Do not describe the image.\n"
-        f"The main concern is {analysis_type} and talk to the user directly.\n"
-        "Give short, natural advice as if speaking to them, in a warm but expert tone.\n"
-        f"Focus on {analysis_type} problem and how to improve them with practical skincare steps.\n"
-        "Keep it under 2 short sentences in English."
-    )
+    # prompt_en = (
+    #     "You are a friendly but professional dermatologist AI.\n"
+    #     "You will be given a close-up image of a user's skin.\n"
+    #     "Do not describe the image.\n"
+    #     f"The main concern is {analysis_type} and talk to the user directly.\n"
+    #     "Give short, natural advice as if speaking to them, in a warm but expert tone.\n"
+    #     f"Focus on {analysis_type} problem and how to improve them with practical skincare steps.\n"
+    #     "Keep it under 2 short sentences in English."
+    # )
     
-    # LLaVA (이미지 포함) 요청 페이로드
-    payload_en = {
-        "model": model_name,
-        "stream": False,
-        "messages": [
-            {"role": "system", "content": prompt_en},
-            {
-                "role": "user",
-                "content": "Look at this skin image and give direct, short advice to the user.",
-                "images": [image_base64],
-            },
-        ],
-    }
+    # # LLaVA (이미지 포함) 요청 페이로드
+    # payload_en = {
+    #     "model": model_name,
+    #     "stream": False,
+    #     "messages": [
+    #         {"role": "system", "content": prompt_en},
+    #         {
+    #             "role": "user",
+    #             "content": "Look at this skin image and give direct, short advice to the user.",
+    #             "images": [image_base64],
+    #         },
+    #     ],
+    # }
 
-    try:
-        with httpx.Client() as client:
-            response_en = client.post(ollama_api_url, json=payload_en, timeout=60.0)
-            response_en.raise_for_status() 
+    # try:
+    #     with httpx.Client() as client:
+    #         response_en = client.post(ollama_api_url, json=payload_en, timeout=60.0)
+    #         response_en.raise_for_status() 
             
-            english_advice = response_en.json()["message"]["content"].strip()
+    #         english_advice = response_en.json()["message"]["content"].strip()
 
-            prompt_ko = (
-                "Translate the following English skincare advice into fluent, natural Korean.\n"
-                "Write as if speaking directly to the user.\n"
-                "Use only Korean characters (no Japanese, Chinese, or English words).\n"
-                "Keep it short (2-3 sentences), polite, and clear.\n"
-                "Do not describe the image or add any extra explanation.\n"
-                "Text to translate:\n" + english_advice
-            )
+    #         prompt_ko = (
+    #             "Translate the following English skincare advice into fluent, natural Korean.\n"
+    #             "Write as if speaking directly to the user.\n"
+    #             "Use only Korean characters (no Japanese, Chinese, or English words).\n"
+    #             "Keep it short (2-3 sentences), polite, and clear.\n"
+    #             "Do not describe the image or add any extra explanation.\n"
+    #             "Text to translate:\n" + english_advice
+    #         )
             
-            payload_ko = {
-                "model": translator_model,
-                "stream": False,
-                "messages": [
-                    {"role": "system", "content": "You are a professional translator."},
-                    {"role": "user", "content": prompt_ko},
-                ],
-            }
+    #         payload_ko = {
+    #             "model": translator_model,
+    #             "stream": False,
+    #             "messages": [
+    #                 {"role": "system", "content": "You are a professional translator."},
+    #                 {"role": "user", "content": prompt_ko},
+    #             ],
+    #         }
             
-            response_ko = client.post(ollama_api_url, json=payload_ko, timeout=30.0)
-            response_ko.raise_for_status()
+    #         response_ko = client.post(ollama_api_url, json=payload_ko, timeout=30.0)
+    #         response_ko.raise_for_status()
             
-            return response_ko.json()["message"]["content"].strip()
+    #         return response_ko.json()["message"]["content"].strip()
     
-    except httpx.HTTPStatusError as e:
-        print(f"Ollama API request failed with status {e.response.status_code}: {e.response.text}")
-        return f"피부 분석 중 API 오류가 발생했습니다. (모델: {analysis_type})"
-    except httpx.RequestError as e:
-        print(f"Error connecting to Ollama service at {e.request.url!r}: {e}")
-        return f"피부 분석 중 오류가 발생했습니다. (모델: {analysis_type})"
-    except Exception as e:
-        print(f"An unexpected error occurred during skin analysis: {e}")
-        return f"피부 분석 중 오류가 발생했습니다. (모델: {analysis_type})"
+    # except httpx.HTTPStatusError as e:
+    #     print(f"Ollama API request failed with status {e.response.status_code}: {e.response.text}")
+    #     return f"피부 분석 중 API 오류가 발생했습니다. (모델: {analysis_type})"
+    # except httpx.RequestError as e:
+    #     print(f"Error connecting to Ollama service at {e.request.url!r}: {e}")
+    #     return f"피부 분석 중 오류가 발생했습니다. (모델: {analysis_type})"
+    # except Exception as e:
+    #     print(f"An unexpected error occurred during skin analysis: {e}")
+    #     return f"피부 분석 중 오류가 발생했습니다. (모델: {analysis_type})"
 
 
 def resize_and_save_image(

@@ -47,7 +47,13 @@ app.mount(
 )
 
 # Mount static files directory
-app.mount(  f"/{settings.STATIC_DIR.name}", StaticFiles(directory=static_dir_path), name="static")
+dummy_dir_path = str(settings.DUMMY_DIR.resolve())
+
+app.mount(
+    settings.DUMMY_URL_PREFIX,
+    StaticFiles(directory=dummy_dir_path),
+    name="dummy-images"
+)
 
 # Register exception handlers and API routers
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
