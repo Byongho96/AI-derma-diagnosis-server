@@ -6,10 +6,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.api.v1 import diagnoses, users
+from app.api.v1 import diagnoses, users, reviews
 from app.core.exceptions import validation_exception_handler
 from app.db.session import engine
 from app.models.base import Base
+
+# Import all models to ensure they are registered in the metadata
+from app.models import user, diagnosis, review
 
 '''
 Create all database tables.
@@ -59,6 +62,7 @@ app.mount(
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(diagnoses.router, prefix="/api/v1/diagnoses", tags=["diagnoses"])
+app.include_router(reviews.router, prefix="/api/v1/reviews", tags=["reviews"])
 
 # Health check endpoint
 @app.get("/")
