@@ -13,3 +13,4 @@ class User(Base):
     hashed_password = Column(String(255))
 
     diagnoses = relationship("Diagnosis", back_populates="user")
+    reviews = relationship("Review", back_populates="user")
