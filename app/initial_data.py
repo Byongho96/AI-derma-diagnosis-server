@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db, engine, SessionLocal
 from app.models.base import Base    
 from app.models.user import User             
-from app.models.diagnosis import Diagnosis  
+from app.models.diagnosis import Diagnosis
+from app.models.review import Review
 from app.services.user_service import get_password_hash 
 
 # Logging Configuration
@@ -101,6 +102,24 @@ def init_db(session: Session) -> None:
         logger.info("Dummy diagnosis data created.")
     else:
          logger.info("Dummy diagnosis data already exists.")
+
+    # Check if dummy review data exists
+    review_count = session.query(Review).count()
+
+    if review_count == 0:
+        logger.info("Creating dummy review data...")
+        
+        dummy_review = Review(
+            user_id=user.id,
+            rating=5,
+            comment="AI 피부 진단 서비스가 정말 정확하고 유용해요! 피부 상태를 객관적으로 확인할 수 있어서 좋습니다."
+        )
+        
+        session.add(dummy_review)
+        session.commit()
+        logger.info("Dummy review data created.")
+    else:
+        logger.info("Dummy review data already exists.")
 
 
 def main():
