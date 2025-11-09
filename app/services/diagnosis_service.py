@@ -10,7 +10,7 @@ from datetime import datetime
 
 # import httpx
 from ultralytics import YOLO
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from PIL import Image, ImageOps
 
@@ -20,10 +20,25 @@ from app.crud import crud_diagonsis
 # Threshold for calculating wrinkle score 
 MAX_WRINKLE_RATIO_THRESHOLD = 0.1 
 
-# # Relative path to the current file directory
+# Relative path to the current file directory
 CURRENT_FILE_DIR = Path(__file__).resolve().parent
 
-FACE_CASCADE_PATH = f"{CURRENT_FILE_DIR}/weights/haarcascade_frontalface_default.xml"
+# Pre-load AI models
+FACE_MODEL_PATH = f"{CURRENT_FILE_DIR}/weights/yolov8n-face-lindevs.pt"
+WRINKLE_WEIGHT_PATH = f"{CURRENT_FILE_DIR}/weights/wrinkle.pt"
+ACNE_WEIGHT_PATH = f"{CURRENT_FILE_DIR}/weights/acne.pt"
+ATOPY_WEIGHT_PATH = f"{CURRENT_FILE_DIR}/weights/atopy.pt"
+
+for path in [FACE_MODEL_PATH, WRINKLE_WEIGHT_PATH, ACNE_WEIGHT_PATH, ATOPY_WEIGHT_PATH]:
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Weight file not found: {path}")
+
+print("Loading AI models into memory...")
+FACE_MODEL = YOLO(FACE_MODEL_PATH)
+WRINKLE_MODEL = YOLO(WRINKLE_WEIGHT_PATH)
+ACNE_MODEL = YOLO(ACNE_WEIGHT_PATH)
+ATOPY_MODEL = YOLO(ATOPY_WEIGHT_PATH)
+print("All models loaded successfully.")
 
 def calculate_score(masks: np.ndarray) -> int:
     """
@@ -61,7 +76,15 @@ def _run_yolo_segmentation(
     if not os.path.exists(weight_path):
         raise FileNotFoundError(f"Weight not found: {weight_path}")
     
-    model = YOLO(weight_path)
+    if analysis_type == "wrinkle":
+        model = WRINKLE_MODEL
+    elif analysis_type == "acne":
+        model = ACNE_MODEL
+    elif analysis_type == "atopy":
+        model = ATOPY_MODEL
+    else:
+        raise ValueError(f"Unknown analysis type: {analysis_type}")
+    
     results = model.predict(source=img_path, conf=0.25, imgsz=img_size, device=device, save=False, show=False)
 
     result = results[0]
@@ -204,20 +227,67 @@ def _run_sync_processing(
     Handles all heavy, synchronous processing (IO, CPU, AI models).
     Designed to be run in a separate thread via asyncio.to_thread.
     """
-    if not os.path.exists(FACE_CASCADE_PATH):
-        raise FileNotFoundError(f"Haar Cascade file not found: {FACE_CASCADE_PATH}")
-    # 1. Save original image
+    # Bytes -> PIL Image -> CV2 Image to run face detection with OpenCV
+    try:
+        pil_image = Image.open(io.BytesIO(contents))
+        pil_image_rgb = pil_image.convert('RGB')
+    except Exception as e:
+        print(f"Image decoding failed: {e}")
+        raise HTTPException(status_code=400, detail="이미지 파일을 처리할 수 없습니다.")
+
+    # Face detection
+    results = FACE_MODEL.predict(
+        source=pil_image_rgb, 
+        device=settings.AI_DEVICE, 
+        conf=0.5, # 신뢰도 50% 이상만 '얼굴'로 인정
+        verbose=False
+    )
+
+    # No faces detected
+    if len(results[0].boxes) == 0:
+        raise HTTPException(status_code=400, detail="얼굴을 찾을 수 없습니다. 정면 사진을 업로드해주세요.")
+
+    # Crop to the first detected face
+    box = results[0].boxes[0]
+    (x1, y1, x2, y2) = map(int, box.xyxy[0].cpu().numpy())
+
+    # Center of the face box
+    center_x = (x1 + x2) // 2
+    center_y = (y1 + y2) // 2
+    
+    crop_size = settings.IMG_SIZE 
+    half_size = crop_size // 2
+
+    left = center_x - half_size
+    top = center_y - half_size
+    right = center_x + half_size
+    bottom = center_y + half_size
+
+    cropped_pil_image = pil_image_rgb.crop((left, top, right, bottom))
+
+    # Center the cropped image on a black canvas if it's smaller than crop_size
+    if cropped_pil_image.width != crop_size or cropped_pil_image.height != crop_size:
+        final_image = Image.new("RGB", (crop_size, crop_size), (0, 0, 0))
+        paste_x = (crop_size - cropped_pil_image.width) // 2
+        paste_y = (crop_size - cropped_pil_image.height) // 2
+        final_image.paste(cropped_pil_image, (paste_x, paste_y))
+        resized_image = final_image
+    else:
+        resized_image = cropped_pil_image
+
+    # Create directories
     uid = str(uuid.uuid4())
     filename = f"{uid}.jpg"
     original_save_path = settings.STATIC_DIR / user_id / filename
     original_image_url = f"{settings.STATIC_URL_PREFIX}/{user_id}/{filename}"
 
-    resize_and_save_image(contents, original_save_path, size=settings.IMG_SIZE)
+    original_save_path.parent.mkdir(parents=True, exist_ok=True)
+    resized_image.save(original_save_path, format="JPEG", quality=95)
     original_save_path_str = str(original_save_path)
     
     analysis_data = {}
 
-    # 2. Run Wrinkle Analysis
+    # Wrinkle Analysis
     wrinkle_dir = str(settings.STATIC_DIR / user_id / uid / "wrinkle")
     wrinkle_weight = f"{CURRENT_FILE_DIR}/weights/wrinkle.pt"
     
@@ -237,7 +307,7 @@ def _run_sync_processing(
         "wrinkle_description": wrinkle_desc,
     })
 
-    # 3. Run Acne Analysis
+    # Acne Analysis
     acne_dir = str(settings.STATIC_DIR / user_id / uid / "acne")
     acne_weight = f"{CURRENT_FILE_DIR}/weights/acne.pt"
     
@@ -257,7 +327,7 @@ def _run_sync_processing(
         "acne_description": acne_desc,
     })
 
-    # 4. Run Atopy Analysis
+    # Atopy Analysis
     atopy_dir = str(settings.STATIC_DIR / user_id / uid / "atopy")
     atopy_weight = f"{CURRENT_FILE_DIR}/weights/atopy.pt"
     
@@ -277,7 +347,7 @@ def _run_sync_processing(
         "atopy_description": atopy_desc,
     })
 
-    # 5. Calculate total score and save to DB
+    # Calculate total score and save to DB
     total_score = (wrinkle_score + acne_score + atopy_score) // 3
     created_at = datetime.now()
     
