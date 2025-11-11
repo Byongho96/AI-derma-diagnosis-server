@@ -48,6 +48,7 @@ class DiagnosisHistory(BaseModel):
         alias_generator=to_camel,
         populate_by_name=True
     )
+    id : str | uuid.UUID | None = None
     total_score: int
     wrinkle_scores: list[int] = []
     acne_scores: list[int] = []
@@ -100,7 +101,7 @@ class RecentDiagnosis(BaseModel):
     )
 
     id: str | uuid.UUID
-    created_at: datetime
+    created_at: str
     total_score: int
     compared_to_previous: int | None
 

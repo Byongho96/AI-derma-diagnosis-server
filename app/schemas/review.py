@@ -17,6 +17,7 @@ class ReviewResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        to_camel = True
 
 
 class ReviewList(BaseModel):

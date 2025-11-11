@@ -83,6 +83,20 @@ def get_recent_diagnoses_by_user(db: Session, user_id: str, limit: int = 3) -> l
         Diagnosis.user_id == user_id
     ).order_by(Diagnosis.created_at.desc()).limit(limit).all()
 
+def get_recent_diagnoses_from_id_by_user(db: Session, user_id: str, diagnosis_id: str, limit: int = 3) -> list[Diagnosis]:
+    """
+    Gets the most recent diagnosis records for a specific user starting from a specific diagnosis ID.
+    """
+    subquery = db.query(Diagnosis.created_at).filter(
+        Diagnosis.id == diagnosis_id,
+        Diagnosis.user_id == user_id
+    ).subquery()
+
+    return db.query(Diagnosis).filter(
+        Diagnosis.user_id == user_id,
+        Diagnosis.created_at <= subquery.c.created_at
+    ).order_by(Diagnosis.created_at.desc()).limit(limit).all()
+
 def get_diagnosis_by_id(db: Session, diagnosis_id: str) -> Diagnosis | None:
     """
     Gets a specific diagnosis by its ID.

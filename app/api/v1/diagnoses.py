@@ -1,3 +1,4 @@
+import datetime
 from datetime import date, timedelta
 from typing import Optional
 
@@ -11,7 +12,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.services import auth_service, diagnosis_service
 from app.crud.crud_diagonsis import (
-    get_diagnoses_by_user, get_recent_diagnoses_by_user, get_recent_diagnosis_by_user, 
+    get_diagnoses_by_user, get_recent_diagnoses_by_user, get_recent_diagnoses_from_id_by_user, get_recent_diagnosis_by_user, 
     get_diagnosis_by_id
 )
 from app.schemas.diagnosis import (
@@ -82,9 +83,11 @@ def get_recent_diagnosis(
     if second_recent_diagnosis:
         compared_to_previous = recent_diagnosis.total_score - second_recent_diagnosis.total_score
 
+    created_date = recent_diagnosis.created_at.strftime("%Y-%m-%d")
+
     return RecentDiagnosis(
         id=recent_diagnosis.id,
-        created_at=recent_diagnosis.created_at,
+        created_at=created_date,
         total_score=recent_diagnosis.total_score,
         compared_to_previous=compared_to_previous
     )
@@ -114,8 +117,11 @@ def get_weekly_diagnoses(
         end_date=endDate
     )
 
+    is_exact_diagnosis = diagnoses_list and diagnoses_list[0].created_at.date() == endDate
+
     result = DiagnosisHistory(
-        total_score=diagnoses_list[0].total_score if diagnoses_list else 0,
+        id = str(diagnoses_list[0].id) if is_exact_diagnosis else '',
+        total_score=diagnoses_list[0].total_score if is_exact_diagnosis else 0,
         wrinkle_scores=[diag.wrinkle_score for diag in diagnoses_list if diag.wrinkle_score is not None],
         acne_scores=[diag.acne_score for diag in diagnoses_list if diag.acne_score is not None],
         atopy_scores=[diag.atopy_score for diag in diagnoses_list if diag.atopy_score is not None],
@@ -136,7 +142,6 @@ def get_monthly_diagnoses(
     """
     Get diagnosis records for the logged-in user from the past 30 days.
     """
-    print("endDate:", endDate)
     if endDate is None:
         endDate = date.today()
     start_date = endDate - timedelta(days=30)
@@ -148,8 +153,11 @@ def get_monthly_diagnoses(
         end_date=endDate
     )
 
+    is_exact_diagnosis = diagnoses_list and diagnoses_list[0].created_at.date() == endDate
+
     result = DiagnosisHistory(
-        total_score=diagnoses_list[0].total_score if diagnoses_list else 0,
+        id = str(diagnoses_list[0].id) if is_exact_diagnosis else '',
+        total_score=diagnoses_list[0].total_score if is_exact_diagnosis else 0,
         wrinkle_scores=[diag.wrinkle_score for diag in diagnoses_list if diag.wrinkle_score is not None],
         acne_scores=[diag.acne_score for diag in diagnoses_list if diag.acne_score is not None],
         atopy_scores=[diag.atopy_score for diag in diagnoses_list if diag.atopy_score is not None],
@@ -180,9 +188,10 @@ def get_diagnosis_result(
     if not diagnosis:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     
-    recent_diagnoses = get_recent_diagnoses_by_user(
+    recent_diagnoses = get_recent_diagnoses_from_id_by_user(
         db=db, 
         user_id=current_user.id,
+        diagnosis_id=diagnosis_id,
         limit=3
     )
 
@@ -204,7 +213,7 @@ def get_diagnosis_result(
         diagnosis.atopy_score for diagnosis in recent_diagnoses if diagnosis.atopy_score is not None
     ]
 
-    return diagnosis
+    return diagnosis_detail
 
 
 @router.post("/", response_model=DiagnosisDetail, status_code=status.HTTP_201_CREATED) # ❗️ 201 Created
