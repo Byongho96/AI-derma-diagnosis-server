@@ -68,7 +68,9 @@ services:
       retries: 30
 
   app:
-    image: byongho/ai-skin-diagnosis-server:prod
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: fastapi_server
     ports:
       - '8000:8000'
